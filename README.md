@@ -28,12 +28,20 @@ El sistema fue desarrollado por:
 - **Capacidad RAM**: 8 GB
 - **Almacenamiento**: 64 GB
 
+<p align="center">
+<img src="./fig/rpi.jpg" alt="rpi" width="300px">
+</p>
+
 ## Caracteristicas de la *Cámara*
 
 - **Fabricante**: Logitech
 - **Modelo**: Logitech C170 V-U0026
 - **Conectividad** : USB 2.0
 - **Resolución**: 640x480 pixeles
+
+<p align="center">
+<img src="./fig/webcam.png" alt="cam" width="300px">
+</p>
 
 ## Herramientas de Desarrollo y Requisitos
 
