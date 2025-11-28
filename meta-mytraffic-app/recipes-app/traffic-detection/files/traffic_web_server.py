@@ -4,7 +4,7 @@
 ==========================================================
  Proyecto: Deteccion de Trafico en Tiempo Real - Servidor Web
  File: traffic_web_server.py
- Autores: Nagel Mejía Segura, Wilberth Gutiérrez Montero, Óscar González Cambronero.
+ Autores: Nagel Mejí­a Segura, Wilberth Gutií©rrez Montero, Óscar González Cambronero.
  Fecha: 2025-11-09
 Descripción:
      Este script implementa un servidor web HTTP para monitorear en tiempo real
@@ -19,8 +19,8 @@ Descripción:
 ==========================================================
 """
 
-from flask import Flask, jsonify, render_template_string, request
-from flask_cors import CORS
+from flask import Flask, jsonify, render_template_string, request, Response
+#from flask_cors import CORS
 import json
 import os
 import threading
@@ -28,14 +28,69 @@ import time
 from datetime import datetime
 from collections import defaultdict
 from typing import Dict, List
+import cv2
+import numpy as np
+
 
 app = Flask(__name__)
-CORS(app)  # Permitir acceso desde otros orígenes
+#CORS(app)  # Permitir acceso desde otros orí­genes
 
 # Variables globales
 detection_data = None
 last_read_time = None
 data_lock = threading.Lock()
+
+
+# ==================== CORS MANUAL ====================
+@app.after_request
+def after_request(response):
+    """Aí±adir headers CORS manualmente."""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
+detector_instance = None
+
+class FrameStreamer:
+    """Clase para streaming de frames vía MJPEG."""
+    
+    def __init__(self, detector=None, frame_file: str = None):
+        
+        self.detector = detector
+        self.frame_file = frame_file
+        
+    def get_frame(self) -> bytes:
+        """Obtener frame actual como JPEG."""
+        frame = None
+        
+        if self.detector is not None:
+            frame = self.detector.get_latest_frame()
+        
+        elif self.frame_file and os.path.exists(self.frame_file):
+            try:
+                frame = cv2.imread(self.frame_file)
+            except:
+                pass
+        if frame is None:
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "Esperando video...", (150, 240),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        
+        # Codificar como JPEG
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return buffer.tobytes()
+    
+    def generate_frames(self):
+        """Generador de frames para streaming MJPEG."""
+        while True:
+            frame_bytes = self.get_frame()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            time.sleep(0.033)  # ~30 fps
+
+
+frame_streamer = None
 
 
 class TrafficDataMonitor:
@@ -117,13 +172,13 @@ class TrafficDataMonitor:
     @staticmethod
     def get_statistics(data: dict) -> dict:
         """
-        Calcular estadísticas de las detecciones.
+        Calcular estadí­sticas de las detecciones.
 
         Args:
             data: Datos de detecciones
 
         Returns:
-            Diccionario con estadísticas
+            Diccionario con estadí­sticas
         """
         if not data or 'frames' not in data:
             return {}
@@ -131,7 +186,7 @@ class TrafficDataMonitor:
         frames = data['frames']
         metadata = data.get('metadatos', {})
 
-        # Estadísticas basadas en ventana deslizante actual
+        # Estadí­sticas basadas en ventana deslizante actual
         total_detections = 0
         class_counts = defaultdict(int)
         confidence_stats = defaultdict(list)
@@ -160,7 +215,7 @@ class TrafficDataMonitor:
                 'avg_confidence': round(avg_conf, 3)
             })
 
-        # Obtener detecciones actuales (frame más reciente)
+        # Obtener detecciones actuales (frame á´s reciente)
         current_detections = data.get('detecciones_actuales', [])
 
         return {
@@ -179,7 +234,7 @@ class TrafficDataMonitor:
 
 @app.route('/')
 def index():
-    """Página principal con dashboard."""
+    """Página principal con dashboard y video en vivo."""
     html = """
     <!DOCTYPE html>
     <html lang="es">
@@ -201,7 +256,7 @@ def index():
             }
             
             .container {
-                max-width: 1200px;
+                max-width: 1400px;
                 margin: 0 auto;
             }
             
@@ -241,6 +296,56 @@ def index():
             .status.offline {
                 background: #f44336;
                 color: white;
+            }
+            
+            .video-section {
+                background: white;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+            
+            .video-container {
+                position: relative;
+                width: 100%;
+                max-width: 600px;
+                margin: 0 auto;
+                background: #000;
+                border-radius: 5px;
+                overflow: hidden;
+            }
+            
+            .video-feed {
+                width: 100%;
+                height: auto;
+                display: block;
+            }
+            
+            .video-overlay {
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background: rgba(0, 0, 0, 0.7);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+            
+            .video-status {
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #4caf50;
+                margin-right: 8px;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
             }
             
             .grid {
@@ -382,6 +487,18 @@ def index():
                 <p id="lastUpdate" style="margin-top: 10px; color: #666;">Esperando datos...</p>
             </div>
             
+            <!-- Video Feed Section -->
+            <div class="video-section">
+                <h2 style="margin-bottom: 15px; color: #333;">Video en Vivo</h2>
+                <div class="video-container">
+                    <img src="/video_feed" alt="Video Feed" class="video-feed" id="videoFeed">
+                    <div class="video-overlay">
+                        <span class="video-status"></span>
+                        <span>TRANSMITIENDO</span>
+                    </div>
+                </div>
+            </div>
+            
             <div id="content" class="loading">
                 <p>Cargando datos...</p>
             </div>
@@ -404,14 +521,12 @@ def index():
                 let html = '';
                 for (const [key, value] of Object.entries(obj)) {
                     if (level === 0) {
-                        // Top level items as stat rows
                         html += '<div class="stat">';
                         html += '<span class="stat-label">' + key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()) + ':</span>';
                         
                         if (value === null) {
                             html += '<span class="stat-value" style="color: #999;">null</span>';
                         } else if (typeof value === 'object' && !Array.isArray(value)) {
-                            // Special handling for bounding box coordinates
                             if (key === 'caja_delimitadora' && value.x_min !== undefined) {
                                 html += '<span class="stat-value">(' + value.x_min + ', ' + value.y_min + ') → (' + value.x_max + ', ' + value.y_max + ')</span>';
                             } else {
@@ -420,7 +535,6 @@ def index():
                         } else if (Array.isArray(value)) {
                             html += '<span class="stat-value">' + value.length + ' elementos</span>';
                         } else if (typeof value === 'string' && value.includes('T') && value.includes(':')) {
-                            // Format datetime strings
                             html += '<span class="stat-value">' + formatDateTime(value) + '</span>';
                         } else if (typeof value === 'number') {
                             html += '<span class="stat-value">' + (value % 1 === 0 ? value : value.toFixed(3)) + '</span>';
@@ -429,14 +543,12 @@ def index():
                         }
                         html += '</div>';
                     } else {
-                        // Nested items with indentation
                         html += '<div style="margin-left: ' + (level * 15) + 'px; padding: 3px 0; border-left: 2px solid #e0e0e0; padding-left: 10px;">';
                         html += '<span class="json-key" style="font-size: 0.9em;">' + key + ':</span> ';
                         
                         if (value === null) {
                             html += '<span class="json-value" style="color: #999;">null</span>';
                         } else if (typeof value === 'object' && !Array.isArray(value)) {
-                            // Special handling for bounding box coordinates at nested level
                             if (key === 'caja_delimitadora' && value.x_min !== undefined) {
                                 html += '<span class="json-value">(' + value.x_min + ', ' + value.y_min + ') → (' + value.x_max + ', ' + value.y_max + ')</span>';
                             } else {
@@ -461,15 +573,9 @@ def index():
             
             function updateDashboard() {
                 fetch('/api/raw')
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        console.log('Received data:', data);
-                        
                         if (data.error || !data) {
-                            console.log('No data available:', data.error || 'No data');
                             document.getElementById('content').innerHTML = 
                                 '<div class="error">No hay datos disponibles. Asegúrate de que el detector esté ejecutándose y haya generado el archivo JSON.<br><br>Error: ' + (data.error || 'Sin datos') + '</div>';
                             return;
@@ -551,7 +657,6 @@ def index():
                             html += '</div>';
                         }
                         html += '</div>';
-
                         
                         document.getElementById('content').innerHTML = html;
                     })
@@ -561,6 +666,12 @@ def index():
                             '<div class="error">Error de conexión con el servidor.</div>';
                     });
             }
+            
+            // Handle video feed errors
+            document.getElementById('videoFeed').onerror = function() {
+                this.style.display = 'none';
+                this.parentElement.innerHTML = '<div style="padding: 40px; text-align: center; color: #666;">Video no disponible. Asegúrate de que el detector esté ejecutándose.</div>';
+            };
             
             // Update immediately and then every 2 seconds
             updateDashboard();
@@ -574,7 +685,7 @@ def index():
 
 @app.route('/api/status')
 def api_status():
-    """Obtener estado actual y estadísticas."""
+    """Obtener estado actual y estadí­sticas."""
     with data_lock:
         if detection_data is None:
             return jsonify({
@@ -599,7 +710,7 @@ def api_frames():
         if detection_data is None:
             return jsonify({'error': 'No hay datos disponibles'}), 404
 
-        # Parámetros de paginación
+        # Paá´metros de paginación
         limit = request.args.get('limit', type=int, default=50)
         offset = request.args.get('offset', type=int, default=0)
 
@@ -619,7 +730,7 @@ def api_frames():
 
 @app.route('/api/frames/<int:frame_number>')
 def api_frame_detail(frame_number):
-    """Obtener detalle de un frame específico."""
+    """Obtener detalle de un frame especí­fico."""
     with data_lock:
         if detection_data is None:
             return jsonify({'error': 'No hay datos disponibles'}), 404
@@ -638,7 +749,7 @@ def api_frame_detail(frame_number):
 
 @app.route('/api/class/<class_name>')
 def api_class_detections(class_name):
-    """Obtener todas las detecciones de una clase específica."""
+    """Obtener todas las detecciones de una clase especí­fica."""
     with data_lock:
         if detection_data is None:
             return jsonify({'error': 'No hay datos disponibles'}), 404
@@ -673,6 +784,17 @@ def api_raw():
             }), 404
 
         return jsonify(detection_data)
+
+@app.route('/video_feed')
+def video_feed():
+    """Ruta para streaming de video MJPEG."""
+    global frame_streamer
+    
+    if frame_streamer is None:
+        return jsonify({'error': 'Streaming no disponible'}), 503
+    
+    return Response(frame_streamer.generate_frames(),
+                   mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 # ==================== MAIN ====================
@@ -750,9 +872,11 @@ Acceso desde navegador:
             f"  python traffic_detection_json.py detect video.mp4 --log {args.json_file}")
         print()
 
+    frame_streamer = FrameStreamer(frame_file='latest_frame.jpg')
+
     # Inicializar y arrancar monitor
     print("="*70)
-    print("SERVIDOR WEB DE MONITOREO DE TRÁFICO")
+    print("SERVIDOR WEB DE MONITOREO DE TRÁFICO")
     print("="*70)
     print(f"\nArchivo monitoreado: {args.json_file}")
     print(f"Actualización: cada {args.refresh}s")
@@ -773,7 +897,7 @@ Acceso desde navegador:
     print(f"  - Dashboard: /")
     print(f"  - Status: /api/status")
     print(f"  - Frames: /api/frames")
-    print(f"  - Frame específico: /api/frames/<number>")
+    print(f"  - Frame especí­fico: /api/frames/<number>")
     print(f"  - Por clase: /api/class/<class_name>")
     print(f"  - Datos raw: /api/raw")
     print("\nPresiona Ctrl+C para detener el servidor")

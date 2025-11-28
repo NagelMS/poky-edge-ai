@@ -4,19 +4,19 @@
 ==========================================================
  Proyecto: Deteccion de Trafico en Tiempo Real
  File: traffic_detection.py
- Autores: Nagel Mejía Segura, Wilberth Gutiérrez Montero, Óscar González Cambronero.
+ Autores: Nagel Mejia Segura, Wilberth GutiI©rrez Montero, I“scar Gonzanez Cambronero.
  Fecha: 2025-11-09
-Descripción:
-     Este script implementa un sistema de detección de objetos en tiempo real
-     para monitoreo de tráfico utilizando TensorFlow Lite. Detecta vehículos,
-     peatones, semáforos y otros objetos relacionados con el tráfico en video
+Descripcion:
+     Este script implementa un sistema de deteccion de objetos en tiempo real
+     para monitoreo de tranico utilizando TensorFlow Lite. Detecta vehiculos,
+     peatones, semanoros y otros objetos relacionados con el tranico en video
      en vivo o grabado.
 
  Dependencias de pip:
      - tensorflow
      - opencv-python
      - numpy
-     - ai-edge-litert (Opcional, si no está presente hace fallback a tensorflow)
+     - ai-edge-litert (Opcional, si no estanpresente hace fallback a tensorflow)
 
 ==========================================================
 """
@@ -29,6 +29,7 @@ import argparse
 import json
 from datetime import datetime
 from collections import defaultdict
+import threading
 
 # Usar TensorFlow Lite interpreter (Compatible con Python 3.13), en caso de no estar disponible, usar TensorFlow.
 try:
@@ -39,7 +40,7 @@ except ImportError:
 
 
 class DetectionLogger:
-    """Clase para registrar detecciones en formato JSON con actualización continua."""
+    """Clase para registrar detecciones en formato JSON con actualizacion continua."""
 
     def __init__(self, output_file: str, update_interval: int = 1, max_frames: int = 300):
         """
@@ -48,7 +49,7 @@ class DetectionLogger:
         Args:
             output_file: Ruta del archivo JSON de salida
             update_interval: Intervalo de frames para actualizar el archivo (default: cada frame)
-            max_frames: Máximo de frames a mantener en memoria (sliding window, default: 300 = 10s @ 30fps)
+            max_frames: Maximo de frames a mantener en memoria (sliding window, default: 300 = 10s @ 30fps)
         """
         self.output_file = output_file
         self.update_interval = update_interval
@@ -60,13 +61,13 @@ class DetectionLogger:
                 "hora_inicio": datetime.now().isoformat(),
                 "ultima_actualizacion": datetime.now().isoformat(),
                 "version": "1.0",
-                "descripcion": "Registro de detección de objetos de tráfico",
+                "descripcion": "Registro de deteccion de objetos de tranico",
                 "estado": "ejecutandose",
                 "max_frames_almacenados": max_frames,
                 "total_frames_procesados": 0
             },
             "frames": [],
-            "detecciones_actuales": []  # Detecciones del frame más reciente
+            "detecciones_actuales": []  # Detecciones del frame man reciente
         }
 
         # Crear archivo inicial
@@ -92,15 +93,15 @@ class DetectionLogger:
         # Agregar frame y mantener ventana deslizante
         self.detections_log["frames"].append(frame_data)
         if len(self.detections_log["frames"]) > self.max_frames:
-            self.detections_log["frames"].pop(0)  # Eliminar frame más antiguo
+            self.detections_log["frames"].pop(0)  # Eliminar frame man antiguo
 
-        # Actualizar detecciones actuales (frame más reciente)
+        # Actualizar detecciones actuales (frame man reciente)
         self.detections_log["detecciones_actuales"] = detections
 
         self.frame_count += 1
         self.total_frames_processed += 1
 
-        # Actualizar archivo según el intervalo
+        # Actualizar archivo segÚn el intervalo
         if self.frame_count % self.update_interval == 0:
             self._write_to_file()
 
@@ -112,13 +113,13 @@ class DetectionLogger:
             self.detections_log["frames"])
         self.detections_log["metadatos"]["total_frames_procesados"] = self.total_frames_processed
 
-        # Escribir de forma atómica usando archivo temporal
+        # Escribir de forma aiomica usando archivo temporal
         temp_file = self.output_file + ".tmp"
         try:
             with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.detections_log, f, indent=2, ensure_ascii=False)
 
-            # Renombrar archivo temporal al archivo final (operación atómica)
+            # Renombrar archivo temporal al archivo final (operacion aiomica)
             os.replace(temp_file, self.output_file)
         except Exception as e:
             print(f"Error escribiendo log: {e}")
@@ -140,7 +141,7 @@ class DetectionLogger:
 
 class TrafficObjectDetector:
     """
-    Clase para detección de objetos de tráfico usando TensorFlow Lite.
+    Clase para deteccion de objetos de trafico usando TensorFlow Lite.
     """
 
     def __init__(self, model_path: str = None, labels_path: str = None):
@@ -157,10 +158,10 @@ class TrafficObjectDetector:
             if not os.path.exists(default_path):
                 raise FileNotFoundError(
                     f"\n{'='*60}\n"
-                    f"ERROR: ¡Modelo no encontrado!\n"
+                    f"ERROR: Modelo no encontrado!\n"
                     f"{'='*60}\n"
-                    f"Ubicación esperada: {default_path}\n\n"
-                    f"Asegúrate de que el modelo esté en la ubicación correcta.\n\n"
+                    f"Ubicacion esperada: {default_path}\n\n"
+                    f"Asegúrate de que el modelo está en la ubicacion correcta.\n\n"
                     f"O especifica una ruta de modelo personalizada:\n"
                     f"  detector = TrafficObjectDetector(model_path='ruta/al/modelo.tflite')\n"
                     f"{'='*60}\n"
@@ -175,7 +176,7 @@ class TrafficObjectDetector:
         # Cargar etiquetas
         self.labels = self._load_labels()
 
-        # Inicializar intérprete TFLite
+        # Inicializar intI©rprete TFLite
         self.interpreter = Interpreter(model_path=self.model_path)
         self.interpreter.allocate_tensors()
 
@@ -188,18 +189,27 @@ class TrafficObjectDetector:
         self.height = self.input_shape[1]
         self.width = self.input_shape[2]
 
-        # Especificar clases de tráfico de interés
+        # Especificar clases de trafico de interI©s
         self.traffic_classes = {
             0: 'persona',
             1: 'bicicleta',
             2: 'carro',
             3: 'motocicleta',
             5: 'autobús',
-            7: 'camión',
-            9: 'semáforo',
+            7: 'camion',
+            9: 'semaforo',
             11: 'señal de alto',
-            12: 'parquímetro'
+            12: 'parquimetro'
         }
+
+        self.latest_frame = None
+        self.frame_lock = threading.Lock()
+
+    def get_latest_frame(self) -> np.ndarray:
+        """Obtener el último frame procesado para streaming."""
+        with self.frame_lock:
+            return self.latest_frame.copy() if self.latest_frame is not None else None
+
 
     def _load_labels(self) -> List[str]:
         """Cargar etiquetas desde archivo."""
@@ -223,7 +233,7 @@ class TrafficObjectDetector:
         else:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        # Agregar dimensión de lote y convertir a uint8
+        # Agregar dimension de lote y convertir a uint8
         input_data = np.expand_dims(img, axis=0).astype(np.uint8)
 
         return input_data
@@ -235,7 +245,7 @@ class TrafficObjectDetector:
 
         Args:
             frame: Frame de video como un array numpy
-            confidence_threshold: Connfianza mínima para considerar una detección válida
+            confidence_threshold: Confianza minima para considerar una deteccion valida
 
         Returns:
             Lista de detecciones con formato:
@@ -265,7 +275,7 @@ class TrafficObjectDetector:
             if scores[i] > confidence_threshold:
                 class_id = int(classes[i])
 
-                # Centrar solo en clases de tráfico
+                # Centrar solo en clases de tranico
                 if class_id in self.traffic_classes:
                     ymin, xmin, ymax, xmax = boxes[i]
 
@@ -293,11 +303,11 @@ class TrafficObjectDetector:
         colors = {
             'persona': (0, 255, 0),      # Verde
             'carro': (255, 0, 0),        # Azul
-            'camión': (255, 100, 0),     # Azul oscuro
+            'camion': (255, 100, 0),     # Azul oscuro
             'autobús': (255, 150, 0),    # Azul claro
             'motocicleta': (0, 255, 255),  # Amarillo
             'bicicleta': (0, 200, 255),  # Naranja
-            'semáforo': (0, 0, 255),     # Rojo
+            'semaforo': (0, 0, 255),     # Rojo
             'señal de alto': (0, 0, 200),  # Rojo oscuro
         }
 
@@ -339,16 +349,16 @@ class TrafficObjectDetector:
                       log_interval: int = 1,
                       max_frames: int = 300):
         """
-        Procesar video para detección de objetos.
+        Procesar video para deteccion de objetos.
 
         Args:
-            video_source: Ruta del archivo de video o índice del dispositivo de cámara
+            video_source: Ruta del archivo de video o indice del dispositivo de cámara
             output_path: Ruta del archivo de video de salida (opcional)
             show_window: Booleano para mostrar ventana de video
             confidence_threshold: Umbral de confianza para detecciones
             log_detections: Ruta del archivo JSON para guardar detecciones (opcional)
             log_interval: Intervalo de frames para actualizar el JSON (default: 1 = cada frame)
-            max_frames: Máximo de frames a mantener en JSON (sliding window)
+            max_frames: Maximo de frames a mantener en JSON (sliding window)
         """
         # Abrir fuente de video
         cap = cv2.VideoCapture(video_source)
@@ -366,14 +376,14 @@ class TrafficObjectDetector:
 
         print(f"Propiedades del video: {width}x{height} @ {fps} fps")
 
-        # Inicializar logger si se especificó
+        # Inicializar logger si se especifiio
         logger = DetectionLogger(
             log_detections, log_interval, max_frames) if log_detections else None
         if logger:
             print(f"Registrando detecciones en: {log_detections}")
             print(f"Actualizando JSON cada {log_interval} frame(s)")
             print(
-                f"Ventana deslizante: últimos {max_frames} frames ({max_frames/fps:.1f}s @ {fps}fps)")
+                f"Ventana deslizante: Últimos {max_frames} frames ({max_frames/fps:.1f}s @ {fps}fps)")
 
         # Configurar escritor de video si se proporciona una ruta de salida
         writer = None
@@ -384,9 +394,9 @@ class TrafficObjectDetector:
 
         # Crear ventana si es necesario
         if show_window:
-            cv2.namedWindow('Detector de Tráfico', cv2.WINDOW_NORMAL)
+            cv2.namedWindow('Detector de Tranico', cv2.WINDOW_NORMAL)
 
-        print("Iniciando detección... Presiona 'q' para salir")
+        print("Iniciando deteccion... Presiona 'q' para salir")
 
         frame_count = 0
         start_time = cv2.getTickCount()
@@ -404,25 +414,34 @@ class TrafficObjectDetector:
                 # Detectar objetos
                 detections = self.detect_objects(frame, confidence_threshold)
 
-                # Registrar detecciones si el logger está activo
+                # Registrar detecciones si el logger estanactivo
                 if logger:
                     logger.log_frame(frame_count, current_time, detections)
 
                 # Dibujar detecciones
                 output_frame = self.draw_detections(frame, detections)
 
-                # Añadir estadísticas
+                # AI±adir estadisticas
                 stats_text = f"Cuadro: {frame_count} | Objetos: {len(detections)}"
                 cv2.putText(output_frame, stats_text, (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+                with self.frame_lock:
+                    self.latest_frame = output_frame.copy()
 
                 # Escribir cuadro en archivo de salida
                 if writer:
                     writer.write(output_frame)
 
+                try:
+                    cv2.imwrite('latest_frame.jpg', output_frame, 
+                                [cv2.IMWRITE_JPEG_QUALITY, 85])
+                except Exception as e:
+                    pass 
+
                 # Mostrar ventana
                 if show_window:
-                    cv2.imshow('Detector de Tráfico', output_frame)
+                    cv2.imshow('Detector de Trafico', output_frame)
 
                     # Esperar tecla 'q' para salir
                     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -430,7 +449,7 @@ class TrafficObjectDetector:
 
                 frame_count += 1
 
-                # Estadísticas cada 30 cuadros
+                # Estadisticas cada 30 cuadros
                 if frame_count % 30 == 0:
                     print(f"Procesados {frame_count} cuadros...", end='\r')
 
@@ -441,7 +460,7 @@ class TrafficObjectDetector:
             if show_window:
                 cv2.destroyAllWindows()
 
-            # Guardar log si está activo
+            # Guardar log si estanactivo
             if logger:
                 logger.save()
 
@@ -458,9 +477,9 @@ def parse_detections_log(log_file: str,
 
     Args:
         log_file: Ruta del archivo JSON
-        summary: Mostrar solo resumen estadístico
-        filter_class: Filtrar por clase de objeto específica
-        min_confidence: Confianza mínima para filtrar
+        summary: Mostrar solo resumen estadistico
+        filter_class: Filtrar por clase de objeto especifica
+        min_confidence: Confianza minima para filtrar
         frame_range: Tupla (inicio, fin) para rango de frames
     """
     if not os.path.exists(log_file):
@@ -471,20 +490,20 @@ def parse_detections_log(log_file: str,
         data = json.load(f)
 
     print("="*70)
-    print("ANÁLISIS DE DETECCIONES DE TRÁFICO")
+    print("ANILISIS DE DETECCIONES DE TRAFICO")
     print("="*70)
     print(f"\nArchivo: {log_file}")
     print(f"Inicio: {data['metadatos']['hora_inicio']}")
     print(f"Fin: {data['metadatos'].get('hora_fin', 'N/A')}")
 
-    # Actualizar para mostrar información de ventana deslizante
+    # Actualizar para mostrar informacion de ventana deslizante
     metadata = data.get('metadatos', {})
     print(
         f"Total frames procesados: {metadata.get('total_frames_procesados', 'N/A')}")
     print(
         f"Frames en ventana: {metadata.get('frames_en_ventana', len(data.get('frames', [])))}")
     print(
-        f"Tamaño de ventana: {metadata.get('max_frames_almacenados', 'N/A')} frames")
+        f"TamaI±o de ventana: {metadata.get('max_frames_almacenados', 'N/A')} frames")
 
     frames = data['frames']
 
@@ -498,7 +517,7 @@ def parse_detections_log(log_file: str,
         print("\nNo hay frames que coincidan con los filtros.")
         return
 
-    # Calcular estadísticas
+    # Calcular estadisticas
     total_detections = 0
     class_counts = defaultdict(int)
     confidence_stats = defaultdict(list)
@@ -525,7 +544,7 @@ def parse_detections_log(log_file: str,
 
     # Mostrar resumen
     print(f"\n{'='*70}")
-    print("RESUMEN ESTADÍSTICO")
+    print("RESUMEN ESTADISTICO")
     print("="*70)
     print(f"Frames analizados: {len(frames)}")
     print(f"Frames con detecciones: {frames_with_detections}")
@@ -534,7 +553,7 @@ def parse_detections_log(log_file: str,
     if filter_class:
         print(f"Filtrado por clase: {filter_class}")
     if min_confidence:
-        print(f"Confianza mínima: {min_confidence:.2f}")
+        print(f"Confianza minima: {min_confidence:.2f}")
 
     print(f"\n{'Clase':<20} {'Cantidad':<10} {'Confianza Prom':<15}")
     print("-"*70)
@@ -574,11 +593,11 @@ def parse_detections_log(log_file: str,
                 print(
                     f"    {i}. {det['nombre_clase']} - Confianza: {det['confianza']:.3f}")
                 print(
-                    f"       Ubicación: ({bbox['x_min']}, {bbox['y_min']}) -> ({bbox['x_max']}, {bbox['y_max']})")
+                    f"       Ubicacion: ({bbox['x_min']}, {bbox['y_min']}) -> ({bbox['x_max']}, {bbox['y_max']})")
 
     elif not summary:
         print(
-            f"\nHay {len(frames)} frames para mostrar. Use --summary para ver solo estadísticas.")
+            f"\nHay {len(frames)} frames para mostrar. Use --summary para ver solo estadisticas.")
         print("  O use --frame-range para limitar el rango de frames.")
 
 
@@ -587,17 +606,17 @@ def parse_detections_log(log_file: str,
 if __name__ == "__main__":
     # Parser principal
     parser = argparse.ArgumentParser(
-        description='Detección de Objetos de Tráfico usando TensorFlow Lite',
+        description='Deteccion de Objetos de Tranico usando TensorFlow Lite',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     subparsers = parser.add_subparsers(
         dest='command', help='Subcomandos disponibles')
 
-    # Subcomando: detect (detección de objetos)
+    # Subcomando: detect (deteccion de objetos)
     detect_parser = subparsers.add_parser(
         'detect',
-        help='Ejecutar detección de objetos en video',
+        help='Ejecutar deteccion de objetos en video',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
@@ -612,21 +631,21 @@ Ejemplos:
         """
     )
 
-# Ejecución principal
+# Ejecucion principal
 if __name__ == "__main__":
     # Parser principal
     parser = argparse.ArgumentParser(
-        description='Detección de Objetos de Tráfico usando TensorFlow Lite',
+        description='Deteccion de Objetos de Tranico usando TensorFlow Lite',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     subparsers = parser.add_subparsers(
         dest='command', help='Subcomandos disponibles')
 
-    # Subcomando: detect (detección de objetos)
+    # Subcomando: detect (deteccion de objetos)
     detect_parser = subparsers.add_parser(
         'detect',
-        help='Ejecutar detección de objetos en video',
+        help='Ejecutar deteccion de objetos en video',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
@@ -683,7 +702,7 @@ Ejemplos:
         '--max-frames',
         type=int,
         default=300,
-        help='Máximo de frames a mantener en JSON - ventana deslizante (default: 300 = 10s @ 30fps)'
+        help='Manimo de frames a mantener en JSON - ventana deslizante (default: 300 = 10s @ 30fps)'
     )
 
     detect_parser.add_argument(
@@ -707,16 +726,16 @@ Ejemplos:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
-  # Ver resumen estadístico
+  # Ver resumen estadistico
   python script.py parse detections.json --summary
   
-  # Filtrar por clase específica
+  # Filtrar por clase especifica
   python script.py parse detections.json --class carro
   
-  # Filtrar por confianza mínima
+  # Filtrar por confianza minima
   python script.py parse detections.json --min-confidence 0.8
   
-  # Ver frames específicos
+  # Ver frames especificos
   python script.py parse detections.json --frame-range 100 200
         """
     )
@@ -731,7 +750,7 @@ Ejemplos:
         '--summary',
         '-s',
         action='store_true',
-        help='Mostrar solo resumen estadístico'
+        help='Mostrar solo resumen estadistico'
     )
 
     parse_parser.add_argument(
@@ -739,14 +758,14 @@ Ejemplos:
         dest='filter_class',
         type=str,
         default=None,
-        help='Filtrar por clase de objeto específica'
+        help='Filtrar por clase de objeto especifica'
     )
 
     parse_parser.add_argument(
         '--min-confidence',
         type=float,
         default=None,
-        help='Confianza mínima para filtrar detecciones'
+        help='Confianza minima para filtrar detecciones'
     )
 
     parse_parser.add_argument(
@@ -765,16 +784,16 @@ Ejemplos:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
-  # Ver resumen estadístico
+  # Ver resumen estadistico
   python traffic_detection.py parse detections.json --summary
   
-  # Filtrar por clase específica
+  # Filtrar por clase especifica
   python traffic_detection.py parse detections.json --class carro
   
-  # Filtrar por confianza mínima
+  # Filtrar por confianza minima
   python traffic_detection.py parse detections.json --min-confidence 0.8
   
-  # Ver frames específicos
+  # Ver frames especificos
   python traffic_detection.py parse detections.json --frame-range 100 200
         """
     )
@@ -789,7 +808,7 @@ Ejemplos:
         '--summary',
         '-s',
         action='store_true',
-        help='Mostrar solo resumen estadístico'
+        help='Mostrar solo resumen estadistico'
     )
 
     parse_parser.add_argument(
@@ -797,14 +816,14 @@ Ejemplos:
         dest='filter_class',
         type=str,
         default=None,
-        help='Filtrar por clase de objeto específica'
+        help='Filtrar por clase de objeto especifica'
     )
 
     parse_parser.add_argument(
         '--min-confidence',
         type=float,
         default=None,
-        help='Confianza mínima para filtrar detecciones'
+        help='Confianza minima para filtrar detecciones'
     )
 
     parse_parser.add_argument(
@@ -838,13 +857,13 @@ Ejemplos:
 
         if args.device and args.input:
             detect_parser.error(
-                "No se puede usar ambos --d (dispositivo de cámara) y archivo de video simultáneamente")
+                "No se puede usar ambos --d (dispositivo de cámara) y archivo de video simultaneamente")
             detect_parser.error(
                 "Debe proporcionar un archivo de video o usar --d para especificar un dispositivo de cámara")
 
         if args.device and args.input:
             detect_parser.error(
-                "No se puede usar ambos --d (dispositivo de cámara) y archivo de video simultáneamente")
+                "No se puede usar ambos --d (dispositivo de cámara) y archivo de video simultaneamente")
 
         # Determinar fuente de video
         if args.device:
