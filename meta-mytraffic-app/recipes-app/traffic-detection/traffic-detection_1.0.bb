@@ -4,7 +4,8 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
 SRC_URI = " \
-    file://*.py \
+    file://traffic_detection_json.py \
+    file://traffic_web_server.py \
     file://modelos/ \
     file://videos/ \
 "
@@ -16,10 +17,9 @@ RDEPENDS:${PN} = " \
     python3-numpy \
     python3-opencv \
     python3-typing-extensions \
-    python3-tflite-runtime \
     python3-flask \
-    python3-flask-cors \
 "
+
 
 # Directorio de instalación
 INSTALL_DIR = "/opt/traffic-detection"
