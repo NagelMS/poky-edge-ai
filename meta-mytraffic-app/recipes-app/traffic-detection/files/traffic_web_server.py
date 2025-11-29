@@ -4,7 +4,7 @@
 ==========================================================
  Proyecto: Deteccion de Trafico en Tiempo Real - Servidor Web
  File: traffic_web_server.py
- Autores: Nagel Mejí­a Segura, Wilberth Gutií©rrez Montero, Óscar González Cambronero.
+ Autores: Nagel Mejí­a Segura, Wilberth Gutierrez Montero, Óscar González Cambronero.
  Fecha: 2025-11-09
 Descripción:
      Este script implementa un servidor web HTTP para monitorear en tiempo real

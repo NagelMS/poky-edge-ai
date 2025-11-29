@@ -4,12 +4,12 @@
 ==========================================================
  Proyecto: Deteccion de Trafico en Tiempo Real
  File: traffic_detection.py
- Autores: Nagel Mejia Segura, Wilberth GutiI©rrez Montero, I“scar Gonzanez Cambronero.
+ Autores: Nagel Mejia Segura, Wilberth Gutierrez Montero, Oscar Gonzalez Cambronero.
  Fecha: 2025-11-09
 Descripcion:
      Este script implementa un sistema de deteccion de objetos en tiempo real
-     para monitoreo de tranico utilizando TensorFlow Lite. Detecta vehiculos,
-     peatones, semanoros y otros objetos relacionados con el tranico en video
+     para monitoreo de trafico utilizando TensorFlow Lite. Detecta vehiculos,
+     peatones, semanoros y otros objetos relacionados con el trafico en video
      en vivo o grabado.
 
  Dependencias de pip:
@@ -61,7 +61,7 @@ class DetectionLogger:
                 "hora_inicio": datetime.now().isoformat(),
                 "ultima_actualizacion": datetime.now().isoformat(),
                 "version": "1.0",
-                "descripcion": "Registro de deteccion de objetos de tranico",
+                "descripcion": "Registro de deteccion de objetos de trafico",
                 "estado": "ejecutandose",
                 "max_frames_almacenados": max_frames,
                 "total_frames_procesados": 0
@@ -275,7 +275,7 @@ class TrafficObjectDetector:
             if scores[i] > confidence_threshold:
                 class_id = int(classes[i])
 
-                # Centrar solo en clases de tranico
+                # Centrar solo en clases de trafico
                 if class_id in self.traffic_classes:
                     ymin, xmin, ymax, xmax = boxes[i]
 
@@ -343,7 +343,7 @@ class TrafficObjectDetector:
 
     def process_video(self, video_source: str = 0,
                       output_path: str = None,
-                      show_window: bool = True,
+                      show_window: bool = False,
                       confidence_threshold: float = 0.5,
                       log_detections: str = None,
                       log_interval: int = 1,
@@ -392,10 +392,6 @@ class TrafficObjectDetector:
             writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
             print(f"Grabando en: {output_path}")
 
-        # Crear ventana si es necesario
-        if show_window:
-            cv2.namedWindow('Detector de Tranico', cv2.WINDOW_NORMAL)
-
         print("Iniciando deteccion... Presiona 'q' para salir")
 
         frame_count = 0
@@ -439,14 +435,6 @@ class TrafficObjectDetector:
                 except Exception as e:
                     pass 
 
-                # Mostrar ventana
-                if show_window:
-                    cv2.imshow('Detector de Trafico', output_frame)
-
-                    # Esperar tecla 'q' para salir
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-
                 frame_count += 1
 
                 # Estadisticas cada 30 cuadros
@@ -457,8 +445,6 @@ class TrafficObjectDetector:
             cap.release()
             if writer:
                 writer.release()
-            if show_window:
-                cv2.destroyAllWindows()
 
             # Guardar log si estanactivo
             if logger:
@@ -606,7 +592,7 @@ def parse_detections_log(log_file: str,
 if __name__ == "__main__":
     # Parser principal
     parser = argparse.ArgumentParser(
-        description='Deteccion de Objetos de Tranico usando TensorFlow Lite',
+        description='Deteccion de Objetos de Trafico usando TensorFlow Lite',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
@@ -635,7 +621,7 @@ Ejemplos:
 if __name__ == "__main__":
     # Parser principal
     parser = argparse.ArgumentParser(
-        description='Deteccion de Objetos de Tranico usando TensorFlow Lite',
+        description='Deteccion de Objetos de Trafico usando TensorFlow Lite',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
