@@ -199,7 +199,11 @@ class TrafficObjectDetector:
             7: 'camion',
             9: 'semaforo',
             11: 'señal de alto',
-            12: 'parquimetro'
+            12: 'parquimetro',
+            
+            17: 'gato',
+            18: 'perro',
+            21: 'vaca'
         }
 
         self.latest_frame = None
@@ -219,7 +223,7 @@ class TrafficObjectDetector:
         else:
             return ['person', 'bicycle', 'car', 'motorcycle', 'airplane',
                     'bus', 'train', 'truck', 'boat', 'traffic light',
-                    'fire hydrant', 'stop sign', 'parking meter']
+                    'fire hydrant', 'stop sign', 'parking meter', 'cat', 'dog', 'cow']
 
     def preprocess_frame(self, frame: np.ndarray) -> np.ndarray:
         """Preprocesar el frame para la entrada del modelo."""
@@ -309,6 +313,11 @@ class TrafficObjectDetector:
             'bicicleta': (0, 200, 255),  # Naranja
             'semaforo': (0, 0, 255),     # Rojo
             'señal de alto': (0, 0, 200),  # Rojo oscuro
+
+            # Animales (nuevos colores)
+            'perro': (0, 165, 255),      # Naranja
+            'gato': (147, 20, 255),      # Rosa
+            'vaca': (255, 255, 255),     # Blanco
         }
 
         for det in detections:
@@ -347,7 +356,8 @@ class TrafficObjectDetector:
                       confidence_threshold: float = 0.5,
                       log_detections: str = None,
                       log_interval: int = 1,
-                      max_frames: int = 300):
+                      max_frames: int = 300,
+                      process_every_n_frames: int = 1):
         """
         Procesar video para deteccion de objetos.
 
@@ -397,6 +407,9 @@ class TrafficObjectDetector:
         frame_count = 0
         start_time = cv2.getTickCount()
 
+        last_detections = []
+        last_processed_frame = -process_every_n_frames
+
         try:
             while True:
                 ret, frame = cap.read()
@@ -407,20 +420,31 @@ class TrafficObjectDetector:
                 current_time = (cv2.getTickCount() - start_time) / \
                     cv2.getTickFrequency()
 
-                # Detectar objetos
-                detections = self.detect_objects(frame, confidence_threshold)
+                should_process = (frame_count % process_every_n_frames == 0)
+
+                if should_process:
+                    # Detectar objetos solo en frames seleccionados
+                    detections = self.detect_objects(frame, confidence_threshold)
+                    last_detections = detections
+                    last_processed_frame = frame_count
+                else:
+                    # Reutilizar detecciones del último frame procesado
+                    detections = last_detections
 
                 # Registrar detecciones si el logger estanactivo
-                if logger:
+                if logger and should_process:
                     logger.log_frame(frame_count, current_time, detections)
 
                 # Dibujar detecciones
                 output_frame = self.draw_detections(frame, detections)
 
-                # AI±adir estadisticas
-                stats_text = f"Cuadro: {frame_count} | Objetos: {len(detections)}"
-                cv2.putText(output_frame, stats_text, (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                #if should_process:
+                #    stats_text = f"Frame: {frame_count} | Objetos: {len(detections)}"
+                #else:
+                #    stats_text = f"Frame: {frame_count} | Objetos: {len(detections)} [Frame {last_processed_frame}]"
+            
+                #cv2.putText(output_frame, stats_text, (10, 30),
+                #            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
                 with self.frame_lock:
                     self.latest_frame = output_frame.copy()
@@ -430,10 +454,20 @@ class TrafficObjectDetector:
                     writer.write(output_frame)
 
                 try:
-                    cv2.imwrite('latest_frame.jpg', output_frame, 
-                                [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    temp_file = 'latest_frame.tmp.jpg'
+                    # Escribir a archivo temporal
+                    success = cv2.imwrite(temp_file, output_frame, 
+                                        [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    if success:
+                        # Renombrar atómicamente (operación instantánea)
+                        os.replace(temp_file, 'latest_frame.jpg')
                 except Exception as e:
-                    pass 
+                    # Limpiar archivo temporal si falla
+                    if os.path.exists('latest_frame.tmp.jpg'):
+                        try:
+                            os.remove('latest_frame.tmp.jpg')
+                        except:
+                            pass
 
                 frame_count += 1
 
@@ -705,6 +739,14 @@ Ejemplos:
         help='No mostrar ventana de video'
     )
 
+    detect_parser.add_argument(
+        '--skip-frames',
+        '-s',
+        type=int,
+        default=1,
+        help='Procesar solo cada N frames (ej: 2 = cada 2 frames, 3 = cada 3). Acelera el procesamiento. (default: 1 = todos)'
+    )
+
     # Subcomando: parse (analizar logs JSON)
     parse_parser = subparsers.add_parser(
         'parse',
@@ -883,7 +925,8 @@ Ejemplos:
                 confidence_threshold=args.confidence,
                 log_detections=args.log,
                 log_interval=args.log_interval,
-                max_frames=args.max_frames
+                max_frames=args.max_frames,
+                process_every_n_frames=args.skip_frames
             )
         except KeyboardInterrupt:
             print("\n\nInterrumpido por el usuario")
