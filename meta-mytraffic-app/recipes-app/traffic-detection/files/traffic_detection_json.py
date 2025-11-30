@@ -200,7 +200,7 @@ class TrafficObjectDetector:
             9: 'semaforo',
             11: 'señal de alto',
             12: 'parquimetro',
-            
+
             17: 'gato',
             18: 'perro',
             21: 'vaca'
@@ -213,7 +213,6 @@ class TrafficObjectDetector:
         """Obtener el último frame procesado para streaming."""
         with self.frame_lock:
             return self.latest_frame.copy() if self.latest_frame is not None else None
-
 
     def _load_labels(self) -> List[str]:
         """Cargar etiquetas desde archivo."""
@@ -424,7 +423,8 @@ class TrafficObjectDetector:
 
                 if should_process:
                     # Detectar objetos solo en frames seleccionados
-                    detections = self.detect_objects(frame, confidence_threshold)
+                    detections = self.detect_objects(
+                        frame, confidence_threshold)
                     last_detections = detections
                     last_processed_frame = frame_count
                 else:
@@ -438,12 +438,12 @@ class TrafficObjectDetector:
                 # Dibujar detecciones
                 output_frame = self.draw_detections(frame, detections)
 
-                #if should_process:
+                # if should_process:
                 #    stats_text = f"Frame: {frame_count} | Objetos: {len(detections)}"
-                #else:
+                # else:
                 #    stats_text = f"Frame: {frame_count} | Objetos: {len(detections)} [Frame {last_processed_frame}]"
-            
-                #cv2.putText(output_frame, stats_text, (10, 30),
+
+                # cv2.putText(output_frame, stats_text, (10, 30),
                 #            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
                 with self.frame_lock:
@@ -456,8 +456,8 @@ class TrafficObjectDetector:
                 try:
                     temp_file = 'latest_frame.tmp.jpg'
                     # Escribir a archivo temporal
-                    success = cv2.imwrite(temp_file, output_frame, 
-                                        [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    success = cv2.imwrite(temp_file, output_frame,
+                                          [cv2.IMWRITE_JPEG_QUALITY, 85])
                     if success:
                         # Renombrar atómicamente (operación instantánea)
                         os.replace(temp_file, 'latest_frame.jpg')

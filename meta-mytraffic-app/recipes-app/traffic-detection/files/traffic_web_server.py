@@ -20,7 +20,7 @@ Descripción:
 """
 
 from flask import Flask, jsonify, render_template_string, request, Response
-#from flask_cors import CORS
+# from flask_cors import CORS
 import json
 import os
 import threading
@@ -33,7 +33,7 @@ import numpy as np
 
 
 app = Flask(__name__)
-#CORS(app)  # Permitir acceso desde otros orí­genes
+# CORS(app)  # Permitir acceso desde otros orí­genes
 
 # Variables globales
 detection_data = None
@@ -46,27 +46,31 @@ data_lock = threading.Lock()
 def after_request(response):
     """Aí±adir headers CORS manualmente."""
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers',
+                         'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods',
+                         'GET,PUT,POST,DELETE,OPTIONS')
     return response
+
 
 detector_instance = None
 
+
 class FrameStreamer:
     """Clase para streaming de frames vía MJPEG."""
-    
+
     def __init__(self, detector=None, frame_file: str = None):
-        
+
         self.detector = detector
         self.frame_file = frame_file
-        
+
     def get_frame(self) -> bytes:
         """Obtener frame actual como JPEG."""
         frame = None
-        
+
         if self.detector is not None:
             frame = self.detector.get_latest_frame()
-        
+
         elif self.frame_file and os.path.exists(self.frame_file):
             try:
                 frame = cv2.imread(self.frame_file)
@@ -75,12 +79,13 @@ class FrameStreamer:
         if frame is None:
             frame = np.zeros((480, 640, 3), dtype=np.uint8)
             cv2.putText(frame, "Esperando video...", (150, 240),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
         # Codificar como JPEG
-        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        ret, buffer = cv2.imencode(
+            '.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
         return buffer.tobytes()
-    
+
     def generate_frames(self):
         """Generador de frames para streaming MJPEG."""
         while True:
@@ -785,16 +790,17 @@ def api_raw():
 
         return jsonify(detection_data)
 
+
 @app.route('/video_feed')
 def video_feed():
     """Ruta para streaming de video MJPEG."""
     global frame_streamer
-    
+
     if frame_streamer is None:
         return jsonify({'error': 'Streaming no disponible'}), 503
-    
+
     return Response(frame_streamer.generate_frames(),
-                   mimetype='multipart/x-mixed-replace; boundary=frame')
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 # ==================== MAIN ====================
@@ -866,7 +872,8 @@ Acceso desde navegador:
     # Validar archivo JSON
     if not os.path.exists(args.json_file):
         print(f"ADVERTENCIA: Archivo JSON no encontrado: {args.json_file}")
-        print("El servidor se iniciará y esperará a que el detector genere el archivo JSON.")
+        print(
+            "El servidor se iniciará y esperará a que el detector genere el archivo JSON.")
         print("Para generar datos, ejecuta:")
         print(
             f"  python traffic_detection_json.py detect video.mp4 --log {args.json_file}")
